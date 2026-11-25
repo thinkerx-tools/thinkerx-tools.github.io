@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThinkerX 工具集</title>
+<meta name="description" content="ThinkerX 在线工具索引：JSON 透镜、酷家乐方案场景查看器、异常记录预览 ErrorView、CAD 图形检测台。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext x='3' y='24' font-size='22' fill='%234cc2ff' font-family='monospace'%3E%7B%7D%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #0d1117;
+    --fg: #e6edf3;
+    --muted: #8b949e;
+    --accent: #4cc2ff;
+    --surface: #161b22;
+    --border: #2d333b;
+    --radius: 12px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font);
+    line-height: 1.6;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 48px 24px 64px; }
+  header { margin-bottom: 28px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    font-family: var(--mono);
+    font-size: 26px;
+    color: var(--accent);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 10px;
+    width: 46px; height: 46px;
+    display: grid; place-items: center;
+    flex: none;
+  }
+  h1 { font-size: 28px; margin: 0; letter-spacing: .5px; }
+  .tagline { color: var(--muted); margin: 6px 0 0; font-size: 15px; }
+  .toolbar { margin: 26px 0 22px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .search {
+    flex: 1 1 280px;
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+  }
+  .search:focus-within { border-color: var(--accent); }
+  .search svg { flex: none; color: var(--muted); }
+  .search input {
+    flex: 1; border: 0; outline: 0; background: transparent;
+    color: var(--fg); font-size: 15px; font-family: var(--font);
+  }
+  .search input::placeholder { color: var(--muted); }
+  .count { color: var(--muted); font-size: 13px; font-family: var(--mono); white-space: nowrap; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .card {
+    display: flex; flex-direction: column; gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color .15s ease, transform .15s ease, background .15s ease;
+  }
+  .card:hover, .card:focus-visible {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    background: #1a2129;
+    outline: none;
+  }
+  .card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .card h2 { font-size: 18px; margin: 0; }
+  .badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 2px 9px;
+    white-space: nowrap;
+  }
+  .card p { margin: 0; color: var(--muted); font-size: 14px; flex: 1; }
+  .open { color: var(--accent); font-size: 14px; font-weight: 600; }
+  .card:hover .open { text-decoration: underline; }
+  .empty { color: var(--muted); padding: 40px 0; text-align: center; display: none; }
+  footer { margin-top: 40px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--border); padding-top: 18px; }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+  @media (prefers-reduced-motion: reduce) {
+    .card { transition: none; }
+    .card:hover, .card:focus-visible { transform: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo" aria-hidden="true">{}</div>
+      <div>
+        <h1>ThinkerX 工具集</h1>
+        <p class="tagline">在线开发工具索引 · 点击卡片进入对应工具</p>
+      </div>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <label class="search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+      <input id="filter" type="search" placeholder="搜索工具名称或描述…" aria-label="搜索工具">
+    </label>
+    <span class="count" id="count"></span>
+  </div>
+
+  <main class="grid" id="grid"></main>
+  <p class="empty" id="empty">没有匹配的工具</p>
+
+  <footer>
+    ThinkerX 工具集 · 源码与站点托管于 GitHub 组织
+    <a href="https://github.com/thinkerx-tools" target="_blank" rel="noopener">thinkerx-tools</a>
+  </footer>
+</div>
+
+<script>
+  const TOOLS = [
+    { name: 'JSON 透镜', tag: 'json-lens', url: './json-lens/', desc: '高性能 JSON 查看器：虚拟滚动秒开大文件，全文搜索、同级属性匹配、双击编辑与一键保存。' },
+    { name: '酷家乐方案场景查看器', tag: 'KJLTool', url: './KJLTool/', desc: '查看与浏览酷家乐方案场景数据。' },
+    { name: '异常记录预览 · ErrorView', tag: 'errorView', url: './errorView/', desc: '异常与崩溃记录预览、分析与趋势查看。' },
+    { name: 'CAD 图形检测台', tag: 'cad-checker', url: './cad-checker/', desc: 'DXF/DWG 图形封闭性、包含、相交检测与修复。' }
+  ];
+
+  const grid = document.getElementById('grid');
+  const filter = document.getElementById('filter');
+  const count = document.getElementById('count');
+  const empty = document.getElementById('empty');
+
+  function render(list) {
+    grid.innerHTML = '';
+    for (const t of list) {
+      const a = document.createElement('a');
+      a.className = 'card';
+      a.href = t.url;
+      a.innerHTML =
+        '<div class="card-top"><h2></h2><span class="badge"></span></div>' +
+        '<p></p><span class="open">打开 →</span>';
+      a.querySelector('h2').textContent = t.name;
+      a.querySelector('.badge').textContent = t.tag;
+      a.querySelector('p').textContent = t.desc;
+      grid.appendChild(a);
+    }
+    count.textContent = list.length + ' / ' + TOOLS.length + ' 个工具';
+    empty.style.display = list.length ? 'none' : 'block';
+  }
+
+  function apply() {
+    const q = filter.value.trim().toLowerCase();
+    if (!q) { render(TOOLS); return; }
+    render(TOOLS.filter(t =>
+      (t.name + ' ' + t.tag + ' ' + t.desc).toLowerCase().includes(q)));
+  }
+
+  filter.addEventListener('input', apply);
+  render(TOOLS);
+</script>
+</body>
+</html>
