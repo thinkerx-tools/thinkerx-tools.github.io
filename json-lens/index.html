@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JSON 透镜 — 高性能 JSON 查看器</title>
+<meta name="description" content="高性能 JSON 文件查看器：虚拟滚动秒开大文件，支持全文搜索、节点编辑、源码模式与一键保存。">
+<link rel="stylesheet" href="./style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext x='4' y='24' font-size='22' fill='%234cc2ff' font-family='monospace'%3E%7B%7D%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="brand-mark">{ }</span><span class="brand-name">JSON 透镜</span></div>
+  <div class="toolbar">
+    <button id="btnOpen" class="btn" title="打开 JSON 文件 (Ctrl+O)">打开文件</button>
+    <button id="btnPaste" class="btn">粘贴 JSON</button>
+    <button id="btnSample" class="btn btn-ghost">示例数据</button>
+    <button id="btnStress" class="btn btn-ghost" title="生成约 24 万节点的大数据集，体验虚拟滚动性能">性能压测</button>
+    <span class="sep"></span>
+    <div class="view-switch" role="tablist" aria-label="视图切换">
+      <button id="btnTreeView" class="seg active" role="tab" aria-selected="true">树视图</button>
+      <button id="btnRawView" class="seg" role="tab" aria-selected="false">源码</button>
+    </div>
+    <span class="sep"></span>
+    <button id="btnSave" class="btn btn-accent" disabled title="保存修改 (Ctrl+S)">保存</button>
+    <button id="btnDownload" class="btn" disabled>下载副本</button>
+  </div>
+</header>
+
+<div class="searchbar" id="searchbar" hidden>
+  <select id="searchMode" class="scope-select mode-select" aria-label="搜索模式">
+    <option value="text">文本搜索</option>
+    <option value="sibling">同级条件</option>
+  </select>
+  <div class="search-input-wrap">
+    <svg class="search-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M11.7 10.3a6 6 0 1 0-1.4 1.4l3 3 1.4-1.4-3-3zM7 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8z"/></svg>
+    <input id="searchInput" type="text" placeholder="搜索键名或值… (Ctrl+F)" autocomplete="off" spellcheck="false" aria-label="搜索 JSON 内容">
+    <button id="btnCase" class="mini-toggle" title="区分大小写" aria-pressed="false">Aa</button>
+    <select id="searchScope" class="scope-select" aria-label="搜索范围">
+      <option value="all">键和值</option>
+      <option value="key">仅键名</option>
+      <option value="value">仅值</option>
+    </select>
+  </div>
+  <span id="matchInfo" class="match-info">无匹配</span>
+  <button id="btnPrevMatch" class="btn btn-icon" title="上一个匹配 (Shift+Enter)" disabled>↑</button>
+  <button id="btnNextMatch" class="btn btn-icon" title="下一个匹配 (Enter)" disabled>↓</button>
+  <button id="btnClearSearch" class="btn btn-icon" title="清除搜索 (Esc)">✕</button>
+  <span class="sep"></span>
+  <button id="btnExpandAll" class="btn btn-ghost" title="展开前两层">展开两层</button>
+  <button id="btnCollapseAll" class="btn btn-ghost">全部折叠</button>
+  <div id="siblingBar" class="sibling-bar" hidden>
+    <span class="sibling-label">同一对象内需同时满足：</span>
+    <div id="condList" class="cond-list"></div>
+    <button id="btnAddCond" class="btn btn-ghost">＋ 条件</button>
+  </div>
+</div>
+
+<main class="workspace">
+  <!-- 空状态 -->
+  <section id="emptyState" class="empty-state">
+    <div class="drop-card" id="dropCard">
+      <div class="drop-glyph">{ }</div>
+      <h1>拖入 JSON 文件，立即查看</h1>
+      <p>虚拟滚动渲染，几十万节点也流畅。支持搜索定位、节点编辑与保存回原文件。</p>
+      <div class="drop-actions">
+        <button id="btnOpen2" class="btn btn-accent">打开文件</button>
+        <button id="btnPaste2" class="btn">粘贴 JSON</button>
+        <button id="btnSample2" class="btn btn-ghost">看看示例</button>
+      </div>
+      <p class="drop-hint">文件仅在浏览器本地处理，不会上传到任何服务器。</p>
+    </div>
+  </section>
+
+  <!-- 树视图 -->
+  <section id="treeView" class="tree-view" hidden>
+    <div id="breadcrumb" class="breadcrumb" title="当前选中节点路径">$</div>
+    <div id="scroller" class="scroller" tabindex="0" aria-label="JSON 树视图">
+      <div id="spacer" class="spacer">
+        <div id="rowWindow" class="row-window"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 源码视图 -->
+  <section id="rawView" class="raw-view" hidden>
+    <div class="raw-toolbar">
+      <span class="raw-hint">直接编辑 JSON 文本，点击「应用更改」重新解析。</span>
+      <span id="rawError" class="raw-error" hidden></span>
+      <button id="btnApplyRaw" class="btn btn-accent">应用更改</button>
+    </div>
+    <textarea id="rawEditor" spellcheck="false" aria-label="JSON 源码编辑器"></textarea>
+  </section>
+</main>
+
+<footer class="statusbar" id="statusbar">
+  <span id="stFile" class="st-item">未加载文件</span>
+  <span id="stSize" class="st-item"></span>
+  <span id="stNodes" class="st-item"></span>
+  <span id="stParse" class="st-item"></span>
+  <span class="st-flex"></span>
+  <span id="stDirty" class="st-item st-dirty" hidden>● 未保存</span>
+  <span id="stMsg" class="st-item"></span>
+</footer>
+
+<!-- 粘贴 / 添加节点 弹窗 -->
+<div id="modalMask" class="modal-mask" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h2 id="modalTitle">粘贴 JSON</h2>
+    <div id="modalKeyRow" class="modal-key-row" hidden>
+      <label for="modalKey">键名</label>
+      <input id="modalKey" type="text" autocomplete="off" spellcheck="false">
+    </div>
+    <textarea id="modalText" spellcheck="false" placeholder='例如 {"name": "示例", "list": [1, 2, 3]}'></textarea>
+    <div id="modalError" class="modal-error" hidden></div>
+    <div class="modal-actions">
+      <button id="modalCancel" class="btn">取消</button>
+      <button id="modalOk" class="btn btn-accent">确定</button>
+    </div>
+  </div>
+</div>
+
+<div id="dropOverlay" class="drop-overlay" hidden><div class="drop-overlay-inner">松开以打开 JSON 文件</div></div>
+<div id="toast" class="toast" hidden></div>
+<input id="fileInput" type="file" accept=".json,.jsonl,.txt,application/json" hidden>
+
+<script src="./app.js"></script>
+</body>
+</html>
